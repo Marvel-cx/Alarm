@@ -1,0 +1,12 @@
+{
+  "index.html": {
+    "resources": [
+      "js/ionic.bundle.min.js",
+      "css/ionic.min.css",
+      "img/history.png",
+      "img/personal.png",
+      "img/alarm.png",
+      "img/alarm3.wav"
+    ]
+  }
+}

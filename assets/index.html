@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, minimal-ui">
+		<meta content="yes" name="apple-mobile-web-app-capable">
+		<meta content="black" name="apple-mobile-web-app-status-bar-style">
+		<meta content="telephone=no" name="format-detection">
+		<meta content="email=no" name="format-detection">
+		<link rel="stylesheet" type="text/css" href="css/ionic.min.css" />
+		<script src="js/ionic.bundle.min.js"></script>
+		<title>获取地理位置并显示</title>
+		<style>
+			* {
+				margin: 0;
+				padding: 0;
+				font-size: 17px;
+			}
+			
+			.bar-header {
+				height: 10vh;
+				padding-top: 0;
+				padding-bottom: 0;
+				position: fixed;
+			}
+			
+			#allmap {
+				width: 100%;
+				height: 100vh;
+			}
+			
+			.bar-header img {
+				width: 5vh;
+				height: 5vh;
+				margin-top: 2vh;
+				position: absolute;
+			}
+			
+			.map {
+				width: 100%;
+				height: 400px;
+			}
+			
+			.btn-box {
+				margin-top: 1em;
+				width: 100%;
+				height: 44px;
+				display: box;
+				display: -webkit-box;
+				display: flex;
+				display: -webkit-flex;
+				-webkit-box-pack: justify;
+				justify-content: space-between;
+				webkit-justify-content: space-between;
+				-webkit-box-align: center;
+				align-items: stretch;
+				webkit-align-items: stretch;
+			}
+			
+			.btn {
+				color: #fff;
+				background-color: #007AFF;
+				border-radius: 10px;
+				font-size: 17px;
+				text-align: center;
+				padding: 10px
+			}
+			
+			.tips {
+				margin-top: 10px;
+				text-align: center;
+			}
+		</style>
+		<script type="text/javascript" src="http://api.map.baidu.com/api?v=2.0&ak=NTnSwZu6V6aWz17y1ZNnUflKmKy8gskG"></script>
+		<script src="js/jquery-3.2.1.min.js"></script>
+	</head>
+
+	<body>
+		<div class="bar bar-header bar-positive">	
+			<h1 class="title" style="color: white;height:10vh;line-height: 10vh;">警报实时位置</h1>
+			<img id="button" src="img/history.png"  style="right: 10px;">
+		</div>
+		<audio id="audio" src="img/alarm2.wav" loop="" style="border:1px solid black;width: 100%;"></audio>
+		<div id="showmap" class="map" style="margin-top:10vh;height:90vh">
+		</div>
+		<script>
+			//audio 
+			var audio = document.getElementById("audio");
+			var button = document.getElementById("button");
+			
+			function audioAutoPlay() {
+				var audio = document.getElementById('audio');
+				audio.play();
+			}
+			button.onclick = function() {
+				audio.pause();
+			}
+
+			//创建地图
+			var map = new BMap.Map("showmap");
+			var currentPoint;
+			var destinationPoint="";		
+			var ls=window.localStorage;
+			var alarm_id=ls.getItem("alarm_id");
+			var desLat;
+			var desLng; 
+			var geolocation = new BMap.Geolocation();			
+			geolocation.getCurrentPosition(function(r) {
+				if(this.getStatus() == BMAP_STATUS_SUCCESS) {
+					var mk = new BMap.Marker(r.point);
+					map.addOverlay(mk);
+					map.panTo(r.point);
+					currentPoint = new BMap.Point(r.point.lng, r.point.lat);
+					map.centerAndZoom(currentPoint, 15);
+				} else {
+					alert('failed' + this.getStatus());
+				}
+			}, { enableHighAccuracy: true });
+			
+			map.enableScrollWheelZoom(true);
+			map.disableDragging(); //禁止拖拽
+			
+			setTimeout(function() {
+				map.enableDragging(); //两秒后开启拖拽
+				map.enableInertialDragging();   //两秒后开启惯性拖拽
+			}, 1000);
+			
+			
+			function getdata(){
+				$.ajax({
+					type: "GET",
+					url: "http://223.72.155.26:8080/AlarmServer/selectAlarmInfo",
+					//url: "http://223.72.155.26:8666/SchoolServer/easyInfo",
+					//url: "http://172.16.31.172:8080/SchoolServer/easyInfo",
+					dataType: 'JSONP',
+					jsonp: "callback",
+					success: function(result) {
+						data = eval(result);
+						addBox(result);
+					},
+					error: function() {
+						alert("服务器连接失败");
+					}
+				});
+			}
+			getdata();
+			setInterval(getdata,2000);
+				
+			function addBox(result) {
+			$.each(result, function(index, obj) {
+				if(obj['alarm_id'] != alarm_id){
+					map = new BMap.Map("showmap");
+					alarm_id=obj['alarm_id'];
+					ls.setItem("alarm_id",alarm_id);
+					audioAutoPlay();
+					
+					//路径更改
+					desLat=obj['alarm_lat'];
+					desLng=obj['alarm_lng'];
+							
+					destinationPoint = new BMap.Point(desLat,desLng);
+					geolocation.getCurrentPosition(function(r) {
+					if(this.getStatus() == BMAP_STATUS_SUCCESS) {
+						var mk = new BMap.Marker(r.point);
+						map.addOverlay(mk);
+						map.panTo(r.point);
+						currentPoint = new BMap.Point(r.point.lng, r.point.lat);
+						map.centerAndZoom(currentPoint, 15);
+						var driving = new BMap.DrivingRoute(map, {renderOptions:{map: map, autoViewport: true}});
+						driving.search(currentPoint, destinationPoint);
+					} else {
+						alert('failed' + this.getStatus());
+					}
+					}, { enableHighAccuracy: true });
+				}
+			});
+		}
+		</script>
+	</body>
+
+</html>
